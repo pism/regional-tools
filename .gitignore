@@ -2,7 +2,9 @@
 *.log
 *.synctex.gz
 *.rel
+*~
 .DS_Store
 data/*
 build/*
+examples/*.nc
 python/dbg.cpp
