@@ -24,7 +24,9 @@ class App:
         self.nc = None
         self.mask_computed = False
         self.Ncontours = 30
+
         self.create_widgets(master)
+        master.geometry('+%d+%d' % (400, 200))
 
         self.load_data()
 
