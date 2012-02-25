@@ -51,6 +51,30 @@ extension = Extension("dbg",
                       extra_compile_args=extra_compile_args,
                       language="c++")
 
-setup(cmdclass = {'build_ext': build_ext},
-      ext_modules = [extension]
-      )
+setup(
+    name = "dbg",                       # "drainage basin generator"
+    version = "0.1.0",
+    description = "PISM drainage basin generator",
+    long_description = """
+    dbg is the 'drainage basin generator' for regional modeling using PISM.
+    See http://www.pism-docs.org for details.""",
+    author = "PISM authors",
+    author_email = "help@pism-docs.org",
+    url = "https://github.com/pism/regional-tools",
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Environment :: Console',
+        'Environment :: X11 Applications',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: POSIX',
+        'Programming Language :: C++',
+        'Programming Language :: Cython',
+        'Programming Language :: Python',
+        'Topic :: Scientific/Engineering',
+        'Topic :: Utilities'
+          ],
+    cmdclass = {'build_ext': build_ext},
+    ext_modules = [extension]
+    )
