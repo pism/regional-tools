@@ -23,6 +23,7 @@ class App:
         self.pts = None
         self.nc = None
         self.mask_computed = False
+        self.Ncontours = 30
         self.create_widgets(master)
 
         self.load_data()
@@ -96,7 +97,7 @@ class App:
 
         plt.figure(1)
         plt.pcolormesh(self.x, self.y, self.mask)
-        plt.contour(self.x, self.y, self.z, colors='black')
+        plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
         plt.axis('tight')
         plt.axes().set_aspect('equal')
         plt.show()
@@ -133,7 +134,7 @@ class App:
 
             plt.clf()
             plt.pcolormesh(self.x, self.y, self.mask)
-            plt.contour(self.x, self.y, self.z, colors='black')
+            plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
             plt.axis('tight')
             plt.axes().set_aspect('equal')
             plt.draw()
@@ -179,7 +180,7 @@ class App:
 
         plt.figure(1)
         plt.pcolormesh(self.x, self.y, self.mask)
-        plt.contour(self.x, self.y, self.z, colors='black')
+        plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
         plt.axis('tight')
         plt.axes().set_aspect('equal')
         plt.show()
@@ -191,3 +192,4 @@ if __name__ == "__main__":
     a = App(root)
 
     root.mainloop()
+
