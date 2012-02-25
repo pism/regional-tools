@@ -1,0 +1,8 @@
+*.aux
+*.log
+*.synctex.gz
+*.rel
+.DS_Store
+data/*
+build/*
+python/dbg.cpp
