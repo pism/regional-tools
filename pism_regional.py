@@ -47,10 +47,12 @@ def permute(variable, output_order = ('time', 'z', 'zb', 'y', 'x')):
         return variable[:]              # so that it does not break processing "mapping"
 
 class App:
+    """An application class containing methods of the drainage basin tool.
+    """
     def __init__(self, master):
         self.master = master
-        self.ph = None
-        self.pts = None
+        self.fill = None
+        self.terminus = None
         self.nc = None
         self.mask_computed = False
         self.Ncontours = 30
@@ -60,6 +62,8 @@ class App:
         self.load_data()
 
     def save_results(self):
+        """ Saves the computed drainage basin mask to a file.
+        """
         if self.nc is None:
             return
 
@@ -89,7 +93,7 @@ class App:
             for attr in old_var.ncattrs():
                 value = old_var.getncattr(attr)
                 if isinstance(value, (str, unicode)):
-                    value = value.encode('ASCII', errors='ignore')
+                    value = str(value.encode('ASCII', 'ignore'))
                 var.setncattr(attr, value)
 
         x[:] = self.x
@@ -101,6 +105,10 @@ class App:
         print "Done."
 
     def load_data(self):
+        """Loads data from an input file.
+
+        An input file has to contain variables 'x', 'y', 'usurf', 'thk'.
+        """
         self.input_file = tkFileDialog.askopenfilename(parent=root,
                                                        filetypes = ["NetCDF .nc"],
                                                        title='Choose an input file')
@@ -141,6 +149,8 @@ class App:
             plt.show()
 
     def get_output(self):
+        """Asks the user for the name of the output file.
+        """
         output = tkFileDialog.asksaveasfilename(parent=root,
                                                 filetypes = ["NetCDF .nc"],
                                                 title="Save the mask in...")
@@ -150,6 +160,7 @@ class App:
             return None
 
     def create_widgets(self, master):
+        """Creates all the widgets."""
         frame = Frame(master)
         frame.grid()
 
@@ -171,18 +182,21 @@ class App:
         self.entry.grid(padx=2, pady=2, row=2, column=3)
         self.entry.insert(0, "5")
 
+        # 3
         label = Label(master, text="3.")
         label.grid(padx=2, pady=2, row=3, column=1, sticky=E+W)
 
         button = Button(master, text="Compute the drainage basin mask", command=self.compute_mask)
         button.grid(padx=2, pady=2, row=3, column=2, columnspan=2, sticky=E+W)
 
+        # 4
         label = Label(master, text="4.")
         label.grid(padx=2, pady=2, row=4, column=1, sticky=E+W)
 
         button = Button(master, text="Save the drainage basin mask", command=self.save_results)
         button.grid(padx=2, pady=2, row=4, column=2, columnspan=2, sticky=E+W)
 
+        # 5
         label = Label(master, text="5.")
         label.grid(padx=2, pady=2, row=5, column=1, sticky=E+W)
 
@@ -198,6 +212,8 @@ class App:
         master.wm_resizable(False, False)
 
     def get_terminus(self):
+        """Gets (and plots) the terminus rectangle.
+        """
         from matplotlib.widgets import Cursor
 
         if self.mask_computed == True:
@@ -215,10 +231,10 @@ class App:
         cursor = Cursor(plt.axes(), useblit=True, color='white', linewidth=1 )
 
         # remove the rectangle
-        if self.ph is not None and self.mask_computed == False:
-            for p in self.ph:
+        if self.fill is not None and self.mask_computed == False:
+            for p in self.fill:
                 p.remove()
-            self.ph = None
+            self.fill = None
 
         x_min, x_max, y_min, y_max = plt.axis()
 
@@ -237,33 +253,45 @@ class App:
 
         xs = [x0, x1, x1, x0]
         ys = [y0, y0, y1, y1]
-
-        self.ph = plt.fill(xs, ys, 'white', lw = 2, alpha=0.5)
+        self.fill = plt.fill(xs, ys, 'white', lw = 2, alpha=0.5)
 
         # remove guides
         for line in [l1, l2, l3, l4]:
             line[0].remove()
 
-        plt.draw()
+        x_min = np.minimum(x0, x1)
+        x_max = np.maximum(x0, x1)
 
-        self.pts = zip(xs, ys)
+        y_min = np.minimum(y0, y1)
+        y_max = np.maximum(y0, y1)
+
+        self.terminus = (x_min, x_max, y_min, y_max)
+
+        plt.draw()
 
         self.mask_computed = False
 
     def compute_mask(self):
-        import matplotlib.nxutils as nx
+        """Calls gbd.upslope_area() to compute the drainage basin mask (in place).
+        """
+        x_min, x_max, y_min, y_max = self.terminus
 
-        if self.pts is not None:
-            def correct_mask(mask, x, y, pts):
+        if self.terminus is not None:
+            def correct_mask(mask, x, y):
                     for j in range(y.size):
                         for i in range(x.size):
-                            if mask[j,i] > 0:
-                                if nx.pnpoly(x[i], y[j], pts):
-                                    mask[j,i] = 2
-                                else:
+                            inside = (x[i] >= x_min and
+                                      x[i] <= x_max and
+                                      y[j] >= y_min and
+                                      y[j] <= y_max)
+
+                            if inside:
+                                mask[j,i] = 2
+                            else:
+                                if mask[j,i] > 0:
                                     mask[j,i] = 1
 
-            correct_mask(self.mask, self.x, self.y, self.pts)
+            correct_mask(self.mask, self.x, self.y)
 
         dbg.upslope_area(self.x, self.y, self.z, self.mask)
         print "Drainage basin computation: done"
@@ -279,6 +307,9 @@ class App:
         plt.show()
 
     def compute_bbox(self):
+        """Computes the bounding box of the drainage basin and prints the NCO
+        command that would cut it out of the whole-icesheet dataset.
+        """
         x = self.x
         y = self.y
 
