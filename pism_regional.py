@@ -8,13 +8,43 @@ import matplotlib
 matplotlib.use('TkAgg')
 
 from Tkinter import *
-from ttk import *
 import tkFileDialog
 
 import numpy as np
 import pylab as plt
 
 import dbg
+
+def permute(variable, output_order = ('time', 'z', 'zb', 'y', 'x')):
+    '''
+    Permute dimensions of a NetCDF variable to match the output
+    storage order.
+
+    Parameters
+    ----------
+    variable : a netcdf variable
+               e.g. thk = nc.variables['thk']
+    output_order: dimension tuple (optional)
+                  default ordering is ('time', 'z', 'zb', 'y', 'x')
+
+    Returns
+    -------
+    var_perm : array_like
+    '''
+    input_dimensions = variable.dimensions
+
+    # filter out irrelevant dimensions
+    dimensions = filter(lambda(x): x in input_dimensions,
+                        output_order)
+
+    # create the mapping
+    mapping = map(lambda(x): dimensions.index(x),
+                  input_dimensions)
+
+    if mapping:
+        return np.transpose(variable[:], mapping)
+    else:
+        return variable[:]              # so that it does not break processing "mapping"
 
 class App:
     def __init__(self, master):
@@ -91,8 +121,8 @@ class App:
 
         self.x = np.array(nc.variables['x'][:], dtype=np.double)
         self.y = np.array(nc.variables['y'][:], dtype=np.double)
-        self.z = np.array(np.squeeze(nc.variables['usurf'][:]), dtype=np.double)
-        self.thk = np.array(np.squeeze(nc.variables['thk'][:]), dtype=np.double)
+        self.z = np.array(np.squeeze(permute(nc.variables['usurf'])), dtype=np.double, order='C')
+        self.thk = np.array(np.squeeze(permute(nc.variables['thk'])), dtype=np.double, order='C')
 
         self.mask = dbg.initialize_mask(self.thk)
         print "Mask initialization: done"

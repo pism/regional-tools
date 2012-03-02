@@ -62,8 +62,7 @@ the compiler to use like this:
 ## Usage
 
 - Run `pism_regional.py`. Select a NetCDF file containing variables `x`,
-   `y`, `usurf`, and `thk`. 2D arrays have to be stored in the `(y,x)`
-   order.
+   `y`, `usurf`, and `thk`.
 - Select the terminus region using the mouse.
 - Click "Compute the drainage basin mask"
 - Repeat the terminus region selection and re-generate the mask if necessary
