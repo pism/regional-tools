@@ -125,13 +125,17 @@ class App:
         plt.xticks([])
         plt.yticks([])
 
-        plt.show(block=False)
+        try:
+            # block=False is not supported in some earlier versions of matplotlib
+            plt.show(block=False)
 
-        f = plt.get_current_fig_manager().window
-        w, x0, y0 = f.winfo_width(), f.winfo_x(), f.winfo_y()
+            f = plt.get_current_fig_manager().window
+            w, x0, y0 = f.winfo_width(), f.winfo_x(), f.winfo_y()
 
-        self.master.geometry("+%d+%d" % (x0 + w + 10, y0))
-        self.master.lift()
+            self.master.geometry("+%d+%d" % (x0 + w + 10, y0))
+            self.master.lift()
+        except:
+            plt.show()
 
     def get_output(self):
         output = tkFileDialog.asksaveasfilename(parent=root,
