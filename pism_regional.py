@@ -98,23 +98,14 @@ class App:
 
         print "Done."
 
-    def get_input(self):
-        input_file = tkFileDialog.askopenfile(parent=root,
-                                              filetypes = ["NetCDF .nc"],
-                                              mode='rb',
-                                              title='Choose an input file')
-        if input_file != None:
-            input_file.close()
-            return input_file.name
-        return None
-
     def load_data(self):
-        self.input_file = self.get_input()
+        self.input_file = tkFileDialog.askopenfilename(parent=root,
+                                                       filetypes = ["NetCDF .nc"],
+                                                       title='Choose an input file')
 
-        if self.input_file is None:
+        if len(self.input_file) == 0:
             print "No input file selected. Exiting..."
-            import sys
-            sys.exit(0)
+            exit(0)
 
         self.nc = NC(self.input_file)
         nc = self.nc
@@ -132,7 +123,16 @@ class App:
         plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
         plt.axis('tight')
         plt.axes().set_aspect('equal')
-        plt.show()
+        plt.xticks([])
+        plt.yticks([])
+
+        plt.show(block=False)
+
+        f = plt.get_current_fig_manager().window
+        w, x0, y0 = f.winfo_width(), f.winfo_x(), f.winfo_y()
+
+        self.master.geometry("+%d+%d" % (x0 + w, y0))
+        self.master.lift()
 
     def get_output(self):
         output = tkFileDialog.asksaveasfilename(parent=root,
@@ -157,6 +157,8 @@ class App:
 
         button = Button(master, text="Save the drainage basin mask", command=self.save_results)
         button.grid(pady=2, row=3, column=1, sticky=E+W)
+
+        master.wm_resizable(False, False)
 
     def get_terminus(self):
         from matplotlib.widgets import Cursor
