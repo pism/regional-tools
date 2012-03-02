@@ -87,7 +87,10 @@ class App:
 
         for var, old_var in zip([x,y], [x_orig, y_orig]):
             for attr in old_var.ncattrs():
-                var.setncattr(attr, old_var.getncattr(attr))
+                value = old_var.getncattr(attr)
+                if isinstance(value, (str, unicode)):
+                    value = value.encode('ASCII', errors='ignore')
+                var.setncattr(attr, value)
 
         x[:] = self.x
         y[:] = self.y
@@ -179,6 +182,12 @@ class App:
 
         button = Button(master, text="Save the drainage basin mask", command=self.save_results)
         button.grid(padx=2, pady=2, row=4, column=2, columnspan=2, sticky=E+W)
+
+        label = Label(master, text="5.")
+        label.grid(padx=2, pady=2, row=5, column=1, sticky=E+W)
+
+        label = Label(master, text="Close all windows to quit")
+        label.grid(padx=2, pady=5, row=5, column=2, columnspan=2, sticky=E+W)
 
         master.update()
 
