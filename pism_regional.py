@@ -200,8 +200,8 @@ class App:
         label = Label(master, text="5.")
         label.grid(padx=2, pady=2, row=5, column=1, sticky=E+W)
 
-        label = Label(master, text="Close all windows to quit")
-        label.grid(padx=2, pady=5, row=5, column=2, columnspan=2, sticky=E+W)
+        button = Button(master, text="Quit", command=master.quit)
+        button.grid(padx=2, pady=5, row=5, column=2, columnspan=2, sticky=E+W)
 
         master.update()
 
