@@ -5,6 +5,7 @@ except:
     from netCDF4 import Dataset as NC
 
 import matplotlib
+import matplotlib.cm as cmaps
 matplotlib.use('TkAgg')
 
 from Tkinter import Tk, Frame, Label, Button, Entry, E, W
@@ -55,6 +56,7 @@ class App:
         self.terminus = None
         self.nc = None
         self.mask_computed = False
+        self.cutout_command = ""
         self.Ncontours = 30
 
         self.create_widgets(master)
@@ -100,6 +102,8 @@ class App:
         y[:] = self.y
 
         nc.variables['ftt_mask'][:] = (self.mask == 2)
+
+        nc.cutout_command = self.cutout_command
         nc.close()
 
         print "Done."
@@ -129,12 +133,7 @@ class App:
         print "Mask initialization: done"
 
         plt.figure(1)
-        plt.pcolormesh(self.x, self.y, self.mask)
-        plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
-        plt.axis('tight')
-        plt.axes().set_aspect('equal')
-        plt.xticks([])
-        plt.yticks([])
+        self.plot_mask(0, cmaps.binary)
 
         try:
             # block=False is not supported in some earlier versions of matplotlib
@@ -147,6 +146,17 @@ class App:
             self.master.lift()
         except:
             plt.show()
+
+    def plot_mask(self, threshold, colormap):
+        """Plots mask > threshold using the given colormap.
+        Only 2 colors in the colormap matter, though...
+        """
+        plt.pcolormesh(self.x, self.y, self.mask > threshold, cmap=colormap)
+        plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
+        plt.axis('tight')
+        plt.axes().set_aspect('equal')
+        plt.xticks([])
+        plt.yticks([])
 
     def get_output(self):
         """Asks the user for the name of the output file.
@@ -220,15 +230,12 @@ class App:
             self.mask = dbg.initialize_mask(self.thk)
 
             plt.clf()
-            plt.pcolormesh(self.x, self.y, self.mask)
-            plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
-            plt.axis('tight')
-            plt.axes().set_aspect('equal')
+            self.plot_mask(0, cmaps.binary)
             plt.draw()
 
         plt.setp(plt.gca(),autoscale_on=False)
 
-        cursor = Cursor(plt.axes(), useblit=True, color='white', linewidth=1 )
+        cursor = Cursor(plt.axes(), useblit=True, color='black', linewidth=2 )
 
         # remove the rectangle
         if self.fill is not None and self.mask_computed == False:
@@ -240,20 +247,20 @@ class App:
 
         x0, y0 = plt.ginput(timeout=-1)[0]
 
-        l1 = plt.plot([x0, x0], [y_min, y_max], color='white')
-        l2 = plt.plot([x_min, x_max], [y0, y0], color='white')
+        l1 = plt.plot([x0, x0], [y_min, y_max], color='black', lw=2)
+        l2 = plt.plot([x_min, x_max], [y0, y0], color='black', lw=2)
 
         x1, y1 = plt.ginput(timeout=-1)[0]
 
-        l3 = plt.plot([x1, x1], [y_min, y_max], color='white')
-        l4 = plt.plot([x_min, x_max], [y1, y1], color='white')
+        l3 = plt.plot([x1, x1], [y_min, y_max], color='black', lw=2)
+        l4 = plt.plot([x_min, x_max], [y1, y1], color='black', lw=2)
 
         dx = x1 - x0
         dy = y1 - y0
 
         xs = [x0, x1, x1, x0]
         ys = [y0, y0, y1, y1]
-        self.fill = plt.fill(xs, ys, 'white', lw = 2, alpha=0.5)
+        self.fill = plt.fill(xs, ys, fill=False, edgecolor='black', lw = 2, hatch='/')
 
         # remove guides
         for line in [l1, l2, l3, l4]:
@@ -274,9 +281,10 @@ class App:
     def compute_mask(self):
         """Calls gbd.upslope_area() to compute the drainage basin mask (in place).
         """
-        x_min, x_max, y_min, y_max = self.terminus
+
 
         if self.terminus is not None:
+            x_min, x_max, y_min, y_max = self.terminus
             def correct_mask(mask, x, y):
                     for j in range(y.size):
                         for i in range(x.size):
@@ -299,11 +307,7 @@ class App:
 
         self.compute_bbox()
 
-        plt.figure(1)
-        plt.pcolormesh(self.x, self.y, self.mask)
-        plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
-        plt.axis('tight')
-        plt.axes().set_aspect('equal')
+        self.plot_mask(1, cmaps.Blues)
         plt.show()
 
     def compute_bbox(self):
@@ -345,8 +349,10 @@ class App:
         y0 = np.maximum(y0 - border, 0)
         y1 = np.minimum(y1 + border, y.size - 1)
 
+        self.cutout_command = "ncks -d x,%d,%d -d y,%d,%d %s output.nc" % (x0, x1, y0, y1, self.input_file)
+
         print "To cut out the drainage basin from the original dataset, run:"
-        print "ncks -d x,%d,%d -d y,%d,%d %s output.nc" % (x0, x1, y0, y1, self.input_file)
+        print self.cutout_command
 
 
 if __name__ == "__main__":
