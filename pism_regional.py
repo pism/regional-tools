@@ -7,7 +7,7 @@ except:
 import matplotlib
 matplotlib.use('TkAgg')
 
-from Tkinter import *
+from Tkinter import Tk, Frame, Label, Button, Entry, E, W
 import tkFileDialog
 
 import numpy as np
@@ -56,7 +56,6 @@ class App:
         self.Ncontours = 30
 
         self.create_widgets(master)
-        master.geometry('+%d+%d' % (400, 200))
 
         self.load_data()
 
@@ -131,7 +130,7 @@ class App:
         f = plt.get_current_fig_manager().window
         w, x0, y0 = f.winfo_width(), f.winfo_x(), f.winfo_y()
 
-        self.master.geometry("+%d+%d" % (x0 + w, y0))
+        self.master.geometry("+%d+%d" % (x0 + w + 10, y0))
         self.master.lift()
 
     def get_output(self):
@@ -144,20 +143,45 @@ class App:
             return None
 
     def create_widgets(self, master):
-        # The frame
+        frame = Frame(master)
+        frame.grid()
 
-        self.frame = Frame(master)
-        self.frame.grid()
+        # 1
+        label = Label(master, text="1.")
+        label.grid(padx=2, pady=2, row=1, column=1, sticky=E+W)
 
-        button = Button(master, text="Select terminus location", command=self.get_terminus)
-        button.grid(pady=2, row=1, column=1, sticky=E+W)
+        button = Button(master, text="Select terminus rectangle", command=self.get_terminus)
+        button.grid(padx=2, pady=2, row=1, column=2, columnspan=2, sticky=E+W)
+
+        # 2
+        label = Label(master, text="2.")
+        label.grid(padx=2, pady=2, row=2, column=1, sticky=E+W)
+
+        label = Label(master, text="Set border width (cells):")
+        label.grid(padx=2, pady=2, row=2, column=2, sticky=W)
+
+        self.entry = Entry(master, width=10)
+        self.entry.grid(padx=2, pady=2, row=2, column=3)
+        self.entry.insert(0, "5")
+
+        label = Label(master, text="3.")
+        label.grid(padx=2, pady=2, row=3, column=1, sticky=E+W)
 
         button = Button(master, text="Compute the drainage basin mask", command=self.compute_mask)
-        button.grid(pady=2, row=2, column=1, sticky=E+W)
+        button.grid(padx=2, pady=2, row=3, column=2, columnspan=2, sticky=E+W)
+
+        label = Label(master, text="4.")
+        label.grid(padx=2, pady=2, row=4, column=1, sticky=E+W)
 
         button = Button(master, text="Save the drainage basin mask", command=self.save_results)
-        button.grid(pady=2, row=3, column=1, sticky=E+W)
+        button.grid(padx=2, pady=2, row=4, column=2, columnspan=2, sticky=E+W)
 
+        master.update()
+
+        w, h = master.winfo_width(), master.winfo_height()
+        sw, sh = master.winfo_screenwidth(), master.winfo_screenheight()
+
+        master.geometry("+%d+%d" % ((sw - w) / 2, (sh - h) / 2))
         master.wm_resizable(False, False)
 
     def get_terminus(self):
@@ -177,19 +201,39 @@ class App:
 
         cursor = Cursor(plt.axes(), useblit=True, color='white', linewidth=1 )
 
+        # remove the rectangle
         if self.ph is not None and self.mask_computed == False:
             for p in self.ph:
                 p.remove()
             self.ph = None
 
-        pts = []
-        while len(pts) < 4:
-            pts = np.asarray( plt.ginput(4, timeout=-1) )
+        x_min, x_max, y_min, y_max = plt.axis()
 
-        self.ph = plt.fill(pts[:,0], pts[:,1], 'white', lw = 2, alpha=0.5)
+        x0, y0 = plt.ginput(timeout=-1)[0]
+
+        l1 = plt.plot([x0, x0], [y_min, y_max], color='white')
+        l2 = plt.plot([x_min, x_max], [y0, y0], color='white')
+
+        x1, y1 = plt.ginput(timeout=-1)[0]
+
+        l3 = plt.plot([x1, x1], [y_min, y_max], color='white')
+        l4 = plt.plot([x_min, x_max], [y1, y1], color='white')
+
+        dx = x1 - x0
+        dy = y1 - y0
+
+        xs = [x0, x1, x1, x0]
+        ys = [y0, y0, y1, y1]
+
+        self.ph = plt.fill(xs, ys, 'white', lw = 2, alpha=0.5)
+
+        # remove guides
+        for line in [l1, l2, l3, l4]:
+            line[0].remove()
+
         plt.draw()
 
-        self.pts = pts
+        self.pts = zip(xs, ys)
 
         self.mask_computed = False
 
@@ -212,12 +256,54 @@ class App:
         print "Drainage basin computation: done"
         self.mask_computed = True
 
+        self.compute_bbox()
+
         plt.figure(1)
         plt.pcolormesh(self.x, self.y, self.mask)
         plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
         plt.axis('tight')
         plt.axes().set_aspect('equal')
         plt.show()
+
+    def compute_bbox(self):
+        x = self.x
+        y = self.y
+
+        x0 = x.size - 1
+        x1 = 0
+        y0 = y.size - 1
+        y1 = 0
+
+        for j in range(y.size):
+            for i in range(x.size):
+                if self.mask[j,i] == 2:
+                    if x[i] < x[x0]:
+                        x0 = i
+
+                    if x[i] > x[x1]:
+                        x1 = i
+
+                    if y[j] < y[y0]:
+                        y0 = j
+
+                    if y[j] > y[y1]:
+                        y1 = j
+
+        try:
+            border = int(self.entry.get())
+        except:
+            print "Invalid border width value: %s, using the default (5)." % self.entry.get()
+            border = 5
+
+        x0 = np.maximum(x0 - border, 0)
+        x1 = np.minimum(x1 + border, x.size - 1)
+
+        y0 = np.maximum(y0 - border, 0)
+        y1 = np.minimum(y1 + border, y.size - 1)
+
+        print "To cut out the drainage basin from the original dataset, run:"
+        print "ncks -d x,%d,%d -d y,%d,%d %s output.nc" % (x0, x1, y0, y1, self.input_file)
+
 
 if __name__ == "__main__":
     root = Tk()
