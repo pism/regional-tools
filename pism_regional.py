@@ -77,7 +77,7 @@ class App:
 
         print "Saving the mask to %s" % output_file
 
-        nc = NC(output_file, 'w')
+        nc = NC(output_file, 'w', format='NETCDF3_64BIT')
 
         nc.createDimension('x', self.x.size)
         nc.createDimension('y', self.y.size)
