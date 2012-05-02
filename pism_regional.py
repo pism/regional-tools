@@ -13,6 +13,7 @@ import tkFileDialog
 
 import numpy as np
 import pylab as plt
+import sys
 
 import dbg
 
@@ -47,10 +48,123 @@ def permute(variable, output_order = ('time', 'z', 'zb', 'y', 'x')):
     else:
         return variable[:]              # so that it does not break processing "mapping"
 
+def load_data(input_file):
+    """Loads data from an input file.
+
+    An input file has to contain variables 'x', 'y', 'usurf', 'thk'.
+    """
+
+    nc = NC(input_file)
+
+    x = np.array(nc.variables['x'][:], dtype=np.double)
+    y = np.array(nc.variables['y'][:], dtype=np.double)
+    z = np.array(np.squeeze(permute(nc.variables['usurf'])), dtype=np.double, order='C')
+    thk = np.array(np.squeeze(permute(nc.variables['thk'])), dtype=np.double, order='C')
+
+    nc.close()
+
+    return (x, y, z, thk)
+
+def save_mask(input_file, output_file, result, cutout_command, history):
+    """ Saves the computed drainage basin mask to a file.
+    """
+
+    print "Saving the mask to %s..." % output_file,
+
+    nc_in = NC(input_file)
+    x_orig = nc_in.variables['x']
+    y_orig = nc_in.variables['y']
+
+    nc_out = NC(output_file, 'w', format='NETCDF3_64BIT')
+
+    nc_out.createDimension('x', x_orig.size)
+    nc_out.createDimension('y', y_orig.size)
+
+    x = nc_out.createVariable("x", 'f8', ('x',))
+    y = nc_out.createVariable("y", 'f8', ('y',))
+    mask = nc_out.createVariable("ftt_mask", 'i4', ('y', 'x'))
+
+    mask.long_name = "Drainage basin area for regional modeling"
+
+    # copy attributes
+    for var, old_var in zip([x,y], [x_orig, y_orig]):
+        for attr in old_var.ncattrs():
+            value = old_var.getncattr(attr)
+            if isinstance(value, (str, unicode)):
+                value = str(value.encode('ASCII', 'ignore'))
+            var.setncattr(attr, value)
+
+    # copy coordinate data
+    x[:] = x_orig[:]
+    y[:] = y_orig[:]
+
+    mask[:] = result == 2
+
+    nc_out.cutout_command = cutout_command
+    nc_out.history = history
+
+    nc_out.close()
+    nc_in.close()
+
+    print "done."
+
+def initialize_mask(thk, x, y, terminus):
+
+    mask = dbg.initialize_mask(thk)
+
+    if terminus is not None:
+        x_min, x_max, y_min, y_max = terminus
+        for j in range(y.size):
+            for i in range(x.size):
+                inside = (x[i] >= x_min and
+                          x[i] <= x_max and
+                          y[j] >= y_min and
+                          y[j] <= y_max)
+
+                if inside:
+                    mask[j,i] = 2
+                else:
+                    if mask[j,i] > 0:
+                        mask[j,i] = 1
+
+    return mask
+
+def compute_bbox(input_file, mask, x, y, border):
+    x0 = x.size - 1
+    x1 = 0
+    y0 = y.size - 1
+    y1 = 0
+
+    for j in range(y.size):
+        for i in range(x.size):
+            if mask[j,i] == 2:
+                if x[i] < x[x0]:
+                    x0 = i
+
+                if x[i] > x[x1]:
+                    x1 = i
+
+                if y[j] < y[y0]:
+                    y0 = j
+
+                if y[j] > y[y1]:
+                    y1 = j
+
+
+    x0 = np.maximum(x0 - border, 0)
+    x1 = np.minimum(x1 + border, x.size - 1)
+
+    y0 = np.maximum(y0 - border, 0)
+    y1 = np.minimum(y1 + border, y.size - 1)
+
+    return "ncks -d x,%d,%d -d y,%d,%d %s output.nc" % (x0, x1, y0, y1, input_file)
+
+
 class App:
     """An application class containing methods of the drainage basin tool.
     """
     def __init__(self, master):
+        self.input_file = None
         self.master = master
         self.fill = None
         self.terminus = None
@@ -63,56 +177,8 @@ class App:
 
         self.load_data()
 
-    def save_results(self):
-        """ Saves the computed drainage basin mask to a file.
-        """
-        if self.nc is None:
-            return
-
-        output_file = self.get_output()
-
-        if output_file is None:
-            print "No output file selected; cannot proceed."
-            return
-
-        print "Saving the mask to %s" % output_file
-
-        nc = NC(output_file, 'w', format='NETCDF3_64BIT')
-
-        nc.createDimension('x', self.x.size)
-        nc.createDimension('y', self.y.size)
-
-        x = nc.createVariable("x", 'f8', ('x',))
-        y = nc.createVariable("y", 'f8', ('y',))
-        mask = nc.createVariable("ftt_mask", 'i4', ('y', 'x'))
-
-        mask.long_name = "Drainage basin area for regional modeling"
-
-        x_orig = self.nc.variables['x']
-        y_orig = self.nc.variables['y']
-
-        for var, old_var in zip([x,y], [x_orig, y_orig]):
-            for attr in old_var.ncattrs():
-                value = old_var.getncattr(attr)
-                if isinstance(value, (str, unicode)):
-                    value = str(value.encode('ASCII', 'ignore'))
-                var.setncattr(attr, value)
-
-        x[:] = self.x
-        y[:] = self.y
-
-        nc.variables['ftt_mask'][:] = (self.mask == 2)
-
-        nc.cutout_command = self.cutout_command
-        nc.close()
-
-        print "Done."
 
     def load_data(self):
-        """Loads data from an input file.
-
-        An input file has to contain variables 'x', 'y', 'usurf', 'thk'.
-        """
         self.input_file = tkFileDialog.askopenfilename(parent=root,
                                                        filetypes = ["NetCDF .nc"],
                                                        title='Choose an input file')
@@ -121,15 +187,9 @@ class App:
             print "No input file selected. Exiting..."
             exit(0)
 
-        self.nc = NC(self.input_file)
-        nc = self.nc
+        self.x, self.y, self.z, self.thk = load_data(self.input_file)
 
-        self.x = np.array(nc.variables['x'][:], dtype=np.double)
-        self.y = np.array(nc.variables['y'][:], dtype=np.double)
-        self.z = np.array(np.squeeze(permute(nc.variables['usurf'])), dtype=np.double, order='C')
-        self.thk = np.array(np.squeeze(permute(nc.variables['thk'])), dtype=np.double, order='C')
-
-        self.mask = dbg.initialize_mask(self.thk)
+        self.mask = initialize_mask(self.thk, self.x, self.y, None)
         print "Mask initialization: done"
 
         plt.figure(1)
@@ -146,6 +206,17 @@ class App:
             self.master.lift()
         except:
             plt.show()
+
+    def save_results(self):
+
+        self.output_file = self.get_output()
+
+        if self.output_file is None:
+            print "No output file selected; cannot proceed."
+            return
+
+        save_mask(self.input_file, self.output_file, self.mask, self.cutout_command,
+                  self.compute_command())
 
     def plot_mask(self, threshold, colormap):
         """Plots mask > threshold using the given colormap.
@@ -282,24 +353,7 @@ class App:
         """Calls gbd.upslope_area() to compute the drainage basin mask (in place).
         """
 
-
-        if self.terminus is not None:
-            x_min, x_max, y_min, y_max = self.terminus
-            def correct_mask(mask, x, y):
-                    for j in range(y.size):
-                        for i in range(x.size):
-                            inside = (x[i] >= x_min and
-                                      x[i] <= x_max and
-                                      y[j] >= y_min and
-                                      y[j] <= y_max)
-
-                            if inside:
-                                mask[j,i] = 2
-                            else:
-                                if mask[j,i] > 0:
-                                    mask[j,i] = 1
-
-            correct_mask(self.mask, self.x, self.y)
+        self.mask = initialize_mask(self.thk, self.x, self.y, self.terminus)
 
         dbg.upslope_area(self.x, self.y, self.z, self.mask)
         print "Drainage basin computation: done"
@@ -314,48 +368,84 @@ class App:
         """Computes the bounding box of the drainage basin and prints the NCO
         command that would cut it out of the whole-icesheet dataset.
         """
-        x = self.x
-        y = self.y
-
-        x0 = x.size - 1
-        x1 = 0
-        y0 = y.size - 1
-        y1 = 0
-
-        for j in range(y.size):
-            for i in range(x.size):
-                if self.mask[j,i] == 2:
-                    if x[i] < x[x0]:
-                        x0 = i
-
-                    if x[i] > x[x1]:
-                        x1 = i
-
-                    if y[j] < y[y0]:
-                        y0 = j
-
-                    if y[j] > y[y1]:
-                        y1 = j
 
         try:
-            border = int(self.entry.get())
+            self.border = int(self.entry.get())
         except:
             print "Invalid border width value: %s, using the default (5)." % self.entry.get()
-            border = 5
+            self.border = 5
 
-        x0 = np.maximum(x0 - border, 0)
-        x1 = np.minimum(x1 + border, x.size - 1)
-
-        y0 = np.maximum(y0 - border, 0)
-        y1 = np.minimum(y1 + border, y.size - 1)
-
-        self.cutout_command = "ncks -d x,%d,%d -d y,%d,%d %s output.nc" % (x0, x1, y0, y1, self.input_file)
+        self.cutout_command = compute_bbox(self.input_file, self.mask, self.x, self.y, self.border)
 
         print "To cut out the drainage basin from the original dataset, run:"
         print self.cutout_command
 
+    def compute_command(self):
+        x_min, x_max, y_min, y_max = self.terminus
+
+        ii = np.r_[0:self.x.size][(self.x >= x_min) & (self.x <= x_max)]
+        jj = np.r_[0:self.y.size][(self.y >= y_min) & (self.y <= y_max)]
+
+        i_min, i_max = ii[0], ii[-1]
+        j_min, j_max = jj[0], jj[-1]
+
+        cmd = "pism_regional.py -i %s -o %s -x %d,%d -y %d,%d -b %d" % (
+            self.input_file, self.output_file, i_min, i_max, j_min, j_max, self.border)
+
+        return cmd
+
+def batch_process():
+    """
+    Process a file using command-line options (without a GUI).
+    """
+
+    from optparse import OptionParser
+
+    parser = OptionParser()
+    parser.usage = "usage: %prog -i foo.nc -o bar.nc --x_range ... --y_range ..."
+    parser.description = "Computes the drainage basin mask given a DEM and a terminus location."
+
+    parser.add_option("-x", "--x_range", dest="x_range", help="x_min,x_max (in grid indices)")
+    parser.add_option("-y", "--y_range", dest="y_range", help="y_min,y_max (in grid indices)")
+    parser.add_option("-b", "--border",  dest="border",  help="y_min,y_max (in grid indices)")
+    parser.add_option("-i", dest="input", help="input file name")
+    parser.add_option("-o", dest="output", help="output file name")
+
+    (opts, args) = parser.parse_args()
+
+    if (opts.input is None or opts.output is None or
+        opts.x_range is None or opts.y_range is None):
+        return
+
+    print "Loading data from %s..." % opts.input,
+    x, y, z, thk = load_data(opts.input)
+    print "done."
+
+    i_min, i_max = map(lambda(x): int(x), opts.x_range.split(','))
+    j_min, j_max = map(lambda(x): int(x), opts.y_range.split(','))
+
+    print "Initializing the mask...",
+    mask = initialize_mask(thk, x, y, (x[i_min], x[i_max], y[j_min], y[j_max]))
+    print "done."
+
+    print "Computing the drainage basin mask...",
+    dbg.upslope_area(x, y, z, mask)
+    print "done."
+
+    print "Computing the cutout command...",
+    cutout_command = compute_bbox(opts.input, mask, x, y, int(opts.border))
+    print "done."
+    print "Command: %s" % cutout_command
+
+    save_mask(opts.input, opts.output, mask, cutout_command,
+              ' '.join(sys.argv))
+
+    exit(0)
 
 if __name__ == "__main__":
+
+    batch_process()
+
     root = Tk()
     root.wm_title("PISM drainage basin mask creator")
 
