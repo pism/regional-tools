@@ -3,7 +3,7 @@
 \usepackage{graphicx}
 
 \begin{document}
-\title{Automatic drainage system delineation for Greenland and Antarctica}
+\title{Automatic drainage system delineation for ice sheets}
 \author{Constantine Khroulev}
 \date{\today}
 \maketitle
@@ -15,9 +15,24 @@ Manual delineation is arguably the most accurate but laborious method \cite{zwal
 
 Measured surface velocities such as in \cite{joughin2010greenland}, if
 available, provide a wealth of information for basin delineation.
-Unfortunately, in many cases the data coverage is poor at best. To avoid this
-issue, we assume that ice flow down the surface gradient (i.e. according to the
-shallow ice approximation).
+Unfortunately, in many cases the data coverage is too poor to provide continuous
+basin boundaries.
+
+To avoid this issue, we assume that ice flow down the surface gradient.  This
+assumption is compatible with the shallow ice approximation (SIA) which describes ice
+flow at the biggest scales.  Also, though the SIA is likely to be a poor description
+of the flow in the fastest parts of an outlet glacier, the SIA, and the assumption
+we make about flow being down the surface gradient, are appropriate along the
+boundaries of the basins we are trying to delineate.
+
+This basin delineation has been done before for the purpose of ice dynamics.
+For example, Figure 1 in \cite{Joughinetal2008JGR} shows such a drainage
+(``catchment'') basin, delineated for the purpose of identifying which ice flows
+to the Jakobshavn calving front.  Furthermore, a drainage basin delineation tool
+for ice sheets using \textsc{Matlab}'s \texttt{stream2} function developed by
+D.~Dellagiustina for use with PISM \cite{DellaGiustina2011}.  The current
+document is an update to open-source and free tools, as well as a re-analysis
+of the method.
 
 Ice drainage basins computed with this assumption correspond to supra-glacial
 water drainage basins, and watershed delineation is a standard procedure in
