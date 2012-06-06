@@ -98,8 +98,7 @@ def save_mask(input_file, output_file, result, cutout_command, history):
     x[:] = x_orig[:]
     y[:] = y_orig[:]
 
-    tmp = result == 2
-    mask[:] = np.invert(tmp)
+    mask[:] = result != 2
 
     nc_out.cutout_command = cutout_command
     nc_out.history = history
