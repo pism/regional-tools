@@ -56,10 +56,30 @@ def load_data(input_file):
 
     nc = NC(input_file)
 
-    x = np.array(nc.variables['x'][:], dtype=np.double)
-    y = np.array(nc.variables['y'][:], dtype=np.double)
-    z = np.array(np.squeeze(permute(nc.variables['usurf'])), dtype=np.double, order='C')
-    thk = np.array(np.squeeze(permute(nc.variables['thk'])), dtype=np.double, order='C')
+    ## a list of possible x-dimensions names
+    xdims = ['x','x1']
+    ## a list of possible y-dimensions names
+    ydims = ['y','y1']
+
+    global xdim
+    global ydim
+
+    ## assign x dimension
+    for dim in xdims:
+        if dim in nc.dimensions.keys():
+            xdim = dim
+    ## assign y dimension
+    for dim in ydims:
+        if dim in nc.dimensions.keys():
+            ydim = dim
+
+    x = np.array(nc.variables[xdim][:], dtype=np.double)
+    y = np.array(nc.variables[ydim][:], dtype=np.double)
+    try:
+        z = np.array(np.squeeze(permute(nc.variables['usurf'], ('time', 'z', 'zb', ydim, xdim))), dtype=np.double, order='C')
+    except:
+        z = np.array(np.squeeze(permute(nc.variables['usrf'], ('time', 'z', 'zb', ydim, xdim))), dtype=np.double, order='C')
+    thk = np.array(np.squeeze(permute(nc.variables['thk'], ('time', 'z', 'zb', ydim, xdim))), dtype=np.double, order='C')
 
     nc.close()
 
@@ -72,8 +92,8 @@ def save_mask(input_file, output_file, result, cutout_command, history):
     print "Saving the mask to %s..." % output_file,
 
     nc_in = NC(input_file)
-    x_orig = nc_in.variables['x']
-    y_orig = nc_in.variables['y']
+    x_orig = nc_in.variables[xdim]
+    y_orig = nc_in.variables[ydim]
 
     nc_out = NC(output_file, 'w', format='NETCDF3_64BIT')
 
