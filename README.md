@@ -2,14 +2,21 @@
 
 ## Overview
 
-Regional modeling of outlet glaciers using PISM requires isolating a drainage
-basin.
+Regional modeling of outlet glacier flows using PISM requires isolating a
+drainage basin.
 
 Our goal was to develop a tool using surface topography to divide an ice sheet
-into smaller basins without using measured ice surface speed (which may not be
-available in some cases).
+into smaller basins.  On the one hand, we do not want to use measured ice
+surface velocities because they may not be available in some cases
+(for example, paleo-glacial applications).  On the other hand, we observe that
+existing hydrologic drainage basin generators (for example,
+[topotoolbox](http://physiogeo.unibas.ch/topotoolbox/)) generate poor outlines
+to their drainage basins because (ironically) of the smooth surface topography
+of ice sheets.
 
-Please see `doc/method.tex` for details (unfinished).
+Please see `doc/method.tex` (unfinished) for further details of our numerical
+strategy, and some references to the literature of the ice sheet drainage
+basin problem.
 
 ## Requirements
 
