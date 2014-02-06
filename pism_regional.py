@@ -3,7 +3,6 @@ from netCDF4 import Dataset as NC
 
 import numpy as np
 import sys
-
 import dbg
 
 def permute(variable, output_order = ('time', 'z', 'zb', 'y', 'x')):
@@ -426,25 +425,26 @@ def batch_process():
         opts.x_range is None or opts.y_range is None):
         return
 
-    print "Loading data from %s..." % opts.input,
+    sys.stderr.write("Loading data from %s..." % opts.input)
     x, y, z, thk = load_data(opts.input)
-    print "done."
+    sys.stderr.write("done.\n")
 
     i_min, i_max = map(lambda(x): int(x), opts.x_range.split(','))
     j_min, j_max = map(lambda(x): int(x), opts.y_range.split(','))
 
-    print "Initializing the mask...",
+    sys.stderr.write("Initializing the mask...")
     mask = initialize_mask(thk, x, y, (x[i_min], x[i_max], y[j_min], y[j_max]))
-    print "done."
+    sys.stderr.write("done.\n")
 
-    print "Computing the drainage basin mask...",
+    sys.stderr.write("Computing the drainage basin mask...")
     dbg.upslope_area(x, y, z, mask)
-    print "done."
+    sys.stderr.write("done.\n")
 
-    print "Computing the cutout command...",
+    sys.stderr.write("Computing the cutout command...")
     cutout_command = compute_bbox(opts.input, mask, x, y, int(opts.border))
-    print "done."
-    print "Command: %s" % cutout_command
+    sys.stderr.write("done.\n")
+
+    print "Command: %s\n" % cutout_command
 
     save_mask(opts.input, opts.output, mask, cutout_command,
               ' '.join(sys.argv))
@@ -455,10 +455,10 @@ if __name__ == "__main__":
 
     batch_process()             # calls sys.exit(0) if batch processing succeeded
 
-    import pylab as plt
     import matplotlib
     import matplotlib.cm as cmaps
     matplotlib.use('TkAgg')
+    import pylab as plt
 
     from Tkinter import Tk, Frame, Label, Button, Entry, E, W
     import tkFileDialog
