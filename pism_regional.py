@@ -1,18 +1,7 @@
 #!/usr/bin/env python
-try:
-    from netCDF3 import Dataset as NC
-except:
-    from netCDF4 import Dataset as NC
-
-import matplotlib
-import matplotlib.cm as cmaps
-matplotlib.use('TkAgg')
-
-from Tkinter import Tk, Frame, Label, Button, Entry, E, W
-import tkFileDialog
+from netCDF4 import Dataset as NC
 
 import numpy as np
-import pylab as plt
 import sys
 
 import dbg
@@ -205,7 +194,7 @@ class App:
 
         if len(self.input_file) == 0:
             print "No input file selected. Exiting..."
-            exit(0)
+            sys.exit(0)
 
         self.x, self.y, self.z, self.thk = load_data(self.input_file)
 
@@ -460,11 +449,19 @@ def batch_process():
     save_mask(opts.input, opts.output, mask, cutout_command,
               ' '.join(sys.argv))
 
-    exit(0)
+    sys.exit(0)
 
 if __name__ == "__main__":
 
-    batch_process()
+    batch_process()             # calls sys.exit(0) if batch processing succeeded
+
+    import pylab as plt
+    import matplotlib
+    import matplotlib.cm as cmaps
+    matplotlib.use('TkAgg')
+
+    from Tkinter import Tk, Frame, Label, Button, Entry, E, W
+    import tkFileDialog
 
     root = Tk()
     root.wm_title("PISM drainage basin mask creator")
