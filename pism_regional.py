@@ -36,6 +36,20 @@ def permute(variable, output_order = ('time', 'z', 'zb', 'y', 'x')):
     else:
         return variable[:]              # so that it does not break processing "mapping"
 
+def find_coordinate_variables(input_file):
+    "Find names of coordinate variables in input_file."
+    # set defaults:
+    x_name = "x"
+    y_name = "y"
+    for name in input_file.variables:
+        variable = input_file.variables[name]
+        if getattr(variable, "standard_name", "") == "projection_x_coordinate":
+            x_name = name
+        if getattr(variable, "standard_name", "") == "projection_y_coordinate":
+            y_name = name
+
+    return x_name, y_name
+
 def load_data(input_file):
     """Loads data from an input file.
 
@@ -44,30 +58,17 @@ def load_data(input_file):
 
     nc = NC(input_file)
 
-    ## a list of possible x-dimensions names
-    xdims = ['x','x1']
-    ## a list of possible y-dimensions names
-    ydims = ['y','y1']
+    xdim, ydim = find_coordinate_variables(nc)
 
-    global xdim
-    global ydim
-
-    ## assign x dimension
-    for dim in xdims:
-        if dim in nc.dimensions.keys():
-            xdim = dim
-    ## assign y dimension
-    for dim in ydims:
-        if dim in nc.dimensions.keys():
-            ydim = dim
+    dimension_order = ('time', 'z', 'zb', ydim, xdim)
 
     x = np.array(nc.variables[xdim][:], dtype=np.double)
     y = np.array(nc.variables[ydim][:], dtype=np.double)
     try:
-        z = np.array(np.squeeze(permute(nc.variables['usurf'], ('time', 'z', 'zb', ydim, xdim))), dtype=np.double, order='C')
+        z = np.array(np.squeeze(permute(nc.variables['usurf'], dimension_order)), dtype=np.double, order='C')
     except:
-        z = np.array(np.squeeze(permute(nc.variables['usrf'], ('time', 'z', 'zb', ydim, xdim))), dtype=np.double, order='C')
-    thk = np.array(np.squeeze(permute(nc.variables['thk'], ('time', 'z', 'zb', ydim, xdim))), dtype=np.double, order='C')
+        z = np.array(np.squeeze(permute(nc.variables['usrf'], dimension_order)), dtype=np.double, order='C')
+    thk = np.array(np.squeeze(permute(nc.variables['thk'], dimension_order)), dtype=np.double, order='C')
 
     nc.close()
 
@@ -80,6 +81,9 @@ def save_mask(input_file, output_file, result, cutout_command, history):
     print "Saving the mask to %s..." % output_file,
 
     nc_in = NC(input_file)
+
+    xdim, ydim = find_coordinate_variables(nc_in)
+
     x_orig = nc_in.variables[xdim]
     y_orig = nc_in.variables[ydim]
 
@@ -138,10 +142,17 @@ def initialize_mask(thk, x, y, terminus):
     return mask
 
 def compute_bbox(input_file, mask, x, y, border):
+    """Compute the bounding box around a drainage basin and return the NCO
+    command what would cut it out of the bigger dataset.
+    """
     x0 = x.size - 1
     x1 = 0
     y0 = y.size - 1
     y1 = 0
+
+    nc = NC(input_file)
+    xdim, ydim = find_coordinate_variables(nc)
+    nc.close()
 
     for j in range(y.size):
         for i in range(x.size):
@@ -165,7 +176,7 @@ def compute_bbox(input_file, mask, x, y, border):
     y0 = np.maximum(y0 - border, 0)
     y1 = np.minimum(y1 + border, y.size - 1)
 
-    return "ncks -d x,%d,%d -d y,%d,%d %s output.nc" % (x0, x1, y0, y1, input_file)
+    return "ncks -d %s,%d,%d -d %s,%d,%d %s output.nc" % (xdim, x0, x1, ydim, y0, y1, input_file)
 
 
 class App:
