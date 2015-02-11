@@ -50,6 +50,25 @@ def find_coordinate_variables(input_file):
 
     return x_name, y_name
 
+def find_geometry_variables(input_file):
+    '''
+    Find names of DEM variables (ice thickness and suface) in input_file using
+    their standard_names land_ice_thickness and surface_altitude.
+
+    '''
+    # set defaults:
+    surface_name = "surface"
+    thickness_name  = "thickness"
+    for name in input_file.variables:
+        variable = input_file.variables[name]
+        if getattr(variable, "standard_name", "") == "land_ice_thickness":
+            thickness_name = name
+        if getattr(variable, "standard_name", "") == "surface_altitude":
+            surface_name = name
+
+    return surface_name, thickness_name
+
+
 def load_data(input_file):
     """Loads data from an input file.
 
@@ -59,16 +78,14 @@ def load_data(input_file):
     nc = NC(input_file)
 
     xdim, ydim = find_coordinate_variables(nc)
+    surface, thickness = find_geometry_variables(nc)
 
     dimension_order = ('time', 'z', 'zb', ydim, xdim)
 
     x = np.array(nc.variables[xdim][:], dtype=np.double)
     y = np.array(nc.variables[ydim][:], dtype=np.double)
-    try:
-        z = np.array(np.squeeze(permute(nc.variables['usurf'], dimension_order)), dtype=np.double, order='C')
-    except:
-        z = np.array(np.squeeze(permute(nc.variables['usrf'], dimension_order)), dtype=np.double, order='C')
-    thk = np.array(np.squeeze(permute(nc.variables['thk'], dimension_order)), dtype=np.double, order='C')
+    z = np.array(np.squeeze(permute(nc.variables[surface], dimension_order)), dtype=np.double, order='C')
+    thk = np.array(np.squeeze(permute(nc.variables[thickness], dimension_order)), dtype=np.double, order='C')
 
     nc.close()
 
@@ -145,38 +162,25 @@ def compute_bbox(input_file, mask, x, y, border):
     """Compute the bounding box around a drainage basin and return the NCO
     command what would cut it out of the bigger dataset.
     """
-    x0 = x.size - 1
-    x1 = 0
-    y0 = y.size - 1
-    y1 = 0
-
+    
     nc = NC(input_file)
     xdim, ydim = find_coordinate_variables(nc)
     nc.close()
+    mymask = (mask == 2)
+    xx, yy = np.meshgrid(x, y)
+    
+    x0 = xx[mymask].min()
+    x1 = xx[mymask].max()
+    y0 = yy[mymask].min()
+    y1 = yy[mymask].max()
 
-    for j in range(y.size):
-        for i in range(x.size):
-            if mask[j,i] == 2:
-                if x[i] < x[x0]:
-                    x0 = i
+    x0 -= border
+    x1 += border
 
-                if x[i] > x[x1]:
-                    x1 = i
+    y0 -= border
+    y1 += border
 
-                if y[j] < y[y0]:
-                    y0 = j
-
-                if y[j] > y[y1]:
-                    y1 = j
-
-
-    x0 = np.maximum(x0 - border, 0)
-    x1 = np.minimum(x1 + border, x.size - 1)
-
-    y0 = np.maximum(y0 - border, 0)
-    y1 = np.minimum(y1 + border, y.size - 1)
-
-    return "ncks -d %s,%d,%d -d %s,%d,%d %s output.nc" % (xdim, x0, x1, ydim, y0, y1, input_file)
+    return "ncks -d %s,%.1f,%.1f -d %s,%.1f,%.1f %s output.nc" % (xdim, x0, x1, ydim, y0, y1, input_file)
 
 
 class App:
@@ -391,8 +395,8 @@ class App:
         try:
             self.border = int(self.entry.get())
         except:
-            print "Invalid border width value: %s, using the default (5)." % self.entry.get()
-            self.border = 5
+            print "Invalid border width value: %s, using the default (5000)." % self.entry.get()
+            self.border = 5000
 
         self.cutout_command = compute_bbox(self.input_file, self.mask, self.x, self.y, self.border)
 
@@ -402,14 +406,9 @@ class App:
     def compute_command(self):
         x_min, x_max, y_min, y_max = self.terminus
 
-        ii = np.r_[0:self.x.size][(self.x >= x_min) & (self.x <= x_max)]
-        jj = np.r_[0:self.y.size][(self.y >= y_min) & (self.y <= y_max)]
 
-        i_min, i_max = ii[0], ii[-1]
-        j_min, j_max = jj[0], jj[-1]
-
-        cmd = "pism_regional.py -i %s -o %s -x %d,%d -y %d,%d -b %d" % (
-            self.input_file, self.output_file, i_min, i_max, j_min, j_max, self.border)
+        cmd = "pism_regional.py -i %s -o %s -x {},{} -y {},{} -b {}".format(
+            self.input_file, self.output_file, x_min, x_max, y_min, y_max, self.border)
 
         return cmd
 
@@ -424,9 +423,9 @@ def batch_process():
     parser.usage = "usage: %prog -i foo.nc -o bar.nc --x_range ... --y_range ..."
     parser.description = "Computes the drainage basin mask given a DEM and a terminus location."
 
-    parser.add_option("-x", "--x_range", dest="x_range", help="x_min,x_max (in grid indices)")
-    parser.add_option("-y", "--y_range", dest="y_range", help="y_min,y_max (in grid indices)")
-    parser.add_option("-b", "--border",  dest="border",  help="y_min,y_max (in grid indices)")
+    parser.add_option("-x", "--x_range", dest="x_range", help="x_min,x_max (in m)")
+    parser.add_option("-y", "--y_range", dest="y_range", help="y_min,y_max (in m)")
+    parser.add_option("-b", "--border",  dest="border",  help="add a buffer (in m", default=5000)
     parser.add_option("-i", dest="input", help="input file name")
     parser.add_option("-o", dest="output", help="output file name")
 
@@ -440,11 +439,16 @@ def batch_process():
     x, y, z, thk = load_data(opts.input)
     sys.stderr.write("done.\n")
 
-    i_min, i_max = map(lambda(x): int(x), opts.x_range.split(','))
-    j_min, j_max = map(lambda(x): int(x), opts.y_range.split(','))
+    x_min, x_max = opts.x_range.split(',')
+    y_min, y_max = opts.y_range.split(',')
+
+    x_min = float(x_min)
+    x_max = float(x_max)
+    y_min = float(y_min)
+    y_max = float(y_max)
 
     sys.stderr.write("Initializing the mask...")
-    mask = initialize_mask(thk, x, y, (x[i_min], x[i_max], y[j_min], y[j_max]))
+    mask = initialize_mask(thk, x, y, (x_min, x_max, y_min, y_max))
     sys.stderr.write("done.\n")
 
     sys.stderr.write("Computing the drainage basin mask...")
@@ -452,7 +456,7 @@ def batch_process():
     sys.stderr.write("done.\n")
 
     sys.stderr.write("Computing the cutout command...")
-    cutout_command = compute_bbox(opts.input, mask, x, y, int(opts.border))
+    cutout_command = compute_bbox(opts.input, mask, x, y, opts.border)
     sys.stderr.write("done.\n")
 
     print "Command: %s\n" % cutout_command
