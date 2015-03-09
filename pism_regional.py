@@ -92,8 +92,8 @@ def save_mask(input_file, output_file, result, cutout_command, history):
     nc_out.createDimension('x', x_orig.size)
     nc_out.createDimension('y', y_orig.size)
 
-    x = nc_out.createVariable("x", 'f8', ('x',))
-    y = nc_out.createVariable("y", 'f8', ('y',))
+    x = nc_out.createVariable("x", x_orig.dtype, ('x',))
+    y = nc_out.createVariable("y", x_orig.dtype, ('y',))
     mask = nc_out.createVariable("ftt_mask", 'i4', ('y', 'x'))
 
     mask.long_name = "Drainage basin area for regional modeling"
@@ -107,8 +107,8 @@ def save_mask(input_file, output_file, result, cutout_command, history):
             var.setncattr(attr, value)
 
     # copy coordinate data
-    x[:] = x_orig[:]
-    y[:] = y_orig[:]
+    x[:] = np.array(x_orig[:], dtype=x_orig.dtype)
+    y[:] = np.array(y_orig[:], dtype=y_orig.dtype)
 
     mask[:] = result != 2
 
