@@ -1,5 +1,6 @@
 #include <string.h>             // memset
-#include "dbg_internal.hh"
+#include "Array2D.hh"
+#include "dbg.hh"               // MASK_VALUES
 
 int initialize_mask(int Mx, int My, double *thickness, int* output) {
   Array2D<double> THK(Mx, My);
