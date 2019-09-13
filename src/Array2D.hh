@@ -8,63 +8,60 @@
 template<class T>
 class Array2D {
 public:
-  Array2D(int my_Mx, int my_My)
-    : wrapper(false), private_data(NULL), private_Mx(my_Mx), private_My(my_My)
+  Array2D(int Mx, int My)
+    : m_wrapper(false), m_data(NULL), m_Mx(Mx), m_My(My)
   { }
 
   ~Array2D() {
-    if (wrapper == false)
-      free(private_data);
+    if (not m_wrapper) {
+      free(m_data);
+    }
   }
 
-  void set_size(int my_Mx, int my_My) {
-    private_Mx = my_Mx;
-    private_My = my_My;
+  void set_size(int Mx, int My) {
+    m_Mx = Mx;
+    m_My = My;
   }
 
   int allocate() {
-    if (private_data != NULL)
-      free(private_data);
+    if (m_data != NULL)
+      free(m_data);
 
-    private_data = (T*)malloc(Mx() * My() * sizeof(T));
-    if (private_data == NULL)
+    m_data = (T*)malloc(Mx() * My() * sizeof(T));
+    if (m_data == NULL)
       return 1;
 
     return 0;
   }
 
-  void wrap(T* my_data) {
-    if (private_data != NULL && wrapper == false)
-      free(private_data);
+  void wrap(T* data) {
+    if (m_data != NULL && not m_wrapper)
+      free(m_data);
 
-    private_data = my_data;
-    wrapper = true;
+    m_data = data;
+    m_wrapper = true;
   }
 
-  inline T& operator()(int i, int j)
-  {
-    return private_data[j * Mx() + i];
+  inline T& operator()(int i, int j) {
+    return m_data[j * Mx() + i];
   }
 
-  inline int Mx()
-  {
-    return private_Mx;
+  inline int Mx() {
+    return m_Mx;
   }
 
-  inline int My()
-  {
-    return private_My;
+  inline int My() {
+    return m_My;
   }
 
-  inline T* data()
-  {
-    return private_data;
+  inline T* data() {
+    return m_data;
   }
 
 private:
-  bool wrapper;
-  T* private_data;
-  int private_Mx, private_My;
+  bool m_wrapper;
+  T* m_data;
+  int m_Mx, m_My;
 };
 
 #endif /* _ARRAY2D_H_ */
