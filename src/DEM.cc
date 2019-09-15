@@ -1,25 +1,23 @@
 #include "DEM.hh"
 #include <cmath>
 
-DEM::DEM(double *my_x, int my_Mx, double *my_y, int my_My, double *my_z)
-  : elevation(my_Mx, my_My) {
-  x  = my_x;
-  Mx = my_Mx;
+DEM::DEM(double *x, int Mx, double *y, int My, double *z)
+  : m_elevation(Mx, My, z) {
+  m_x  = x;
+  m_Mx = Mx;
 
-  y  = my_y;
-  My = my_My;
+  m_y  = y;
+  m_My = My;
 
-  z   = my_z;
+  m_z = z;
 
   // We assume that the grid is uniform.
-  dx = x[1] - x[0];
-  dy = y[1] - y[0];
-  spacing = dx > dy ? dx : dy;
+  m_dx = x[1] - x[0];
+  m_dy = y[1] - y[0];
+  m_spacing = m_dx > m_dy ? m_dx : m_dy;
 
-  one_over_dx = 1.0 / dx;
-  one_over_dy = 1.0 / dy;
-
-  elevation.wrap(z);
+  m_one_over_dx = 1.0 / m_dx;
+  m_one_over_dy = 1.0 / m_dy;
 }
 
 void DEM::evaluate(const double *position, double *elevation, double *gradient) {
@@ -44,14 +42,14 @@ void DEM::evaluate(const double *position, double *elevation, double *gradient) 
   this->get_corner_values(i, j, A, B, C, D);
 
   double
-    delta_x = position[0] - x[i],
-    delta_y = position[1] - y[j];
+    delta_x = position[0] - m_x[i],
+    delta_y = position[1] - m_y[j];
 
   // surface elevation
   if (elevation != NULL) {
     double
-      alpha = one_over_dx * delta_x,
-      beta  = one_over_dy * delta_y;
+      alpha = m_one_over_dx * delta_x,
+      beta  = m_one_over_dy * delta_y;
 
     *elevation = ( (1 - alpha) * (1 - beta) * A +
                    (1 - alpha) *      beta  * B +
@@ -61,10 +59,10 @@ void DEM::evaluate(const double *position, double *elevation, double *gradient) 
 
   // the gradient
   if (gradient != NULL) {
-    double gamma = one_over_dx * one_over_dy * (A + C - B - D);
+    double gamma = m_one_over_dx * m_one_over_dy * (A + C - B - D);
 
-    gradient[0] = (D - A) * one_over_dx + delta_x * gamma;
-    gradient[1] = (B - A) * one_over_dy + delta_y * gamma;
+    gradient[0] = (D - A) * m_one_over_dx + delta_x * gamma;
+    gradient[1] = (B - A) * m_one_over_dy + delta_y * gamma;
   }
 
 } // end of DEM::evaluate()

@@ -14,22 +14,51 @@ public:
   int find_cell(const double *position, int &i, int &j);
   void evaluate(const double *position, double *elevation, double *f);
 
-  double *x, *y, *z;
-  double spacing, dx, dy;
-  int Mx, My;
-protected:
-  double one_over_dx, one_over_dy;
+  int Mx() const {
+    return m_Mx;
+  }
+
+  int My() const {
+    return m_My;
+  }
+
+  double spacing() const {
+    return m_spacing;
+  }
+
+  double dx() const {
+    return m_dx;
+  }
+
+  double dy() const {
+    return m_dy;
+  }
+
+  double x(size_t n) const {
+    return m_x[n];
+  }
+
+  double y(size_t n) const {
+    return m_y[n];
+  }
+
+private:
+  double *m_x, *m_y, *m_z;
+  double m_spacing, m_dx, m_dy;
+  int m_Mx, m_My;
+
+  double m_one_over_dx, m_one_over_dy;
   void get_corner_values(int i, int j,
                          double &A, double &B, double &C, double &D);
-  Array2D<double> elevation;
+  Array2D<double> m_elevation;
 };
 
 inline int DEM::find_cell(const double *position, int &i, int &j) {
-  i = floor((position[0] - x[0]) * one_over_dx);
-  j = floor((position[1] - y[0]) * one_over_dy);
+  i = floor((position[0] - m_x[0]) * m_one_over_dx);
+  j = floor((position[1] - m_y[0]) * m_one_over_dy);
 
   // bail if we ended up outside the grid
-  if (i < 0 || i + 1 > Mx - 1 || j < 0 || j + 1 > My - 1) {
+  if (i < 0 || i + 1 > m_Mx - 1 || j < 0 || j + 1 > m_My - 1) {
     i = j = -1;
     return 1;
   }
@@ -49,10 +78,10 @@ inline void DEM::get_corner_values(int i, int j,
   //   | *   |   x
   // --A-----D---->
   //   |
-  A = elevation(i,     j);
-  B = elevation(i,     j + 1);
-  C = elevation(i + 1, j + 1);
-  D = elevation(i + 1, j);
+  A = m_elevation(i,     j);
+  B = m_elevation(i,     j + 1);
+  C = m_elevation(i + 1, j + 1);
+  D = m_elevation(i + 1, j);
 }
 
 #endif /* _DEM_H_ */
