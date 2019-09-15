@@ -52,10 +52,10 @@ static int streamline2(dbg_context ctx, int i_start, int j_start, Array2D<double
         gradient_magnitude = sqrt(gradient[0]*gradient[0] + gradient[1]*gradient[1]);
 
         // take a step
-        status = gsl_odeiv_step_apply(ctx.step,
-                                      0,         // starting time (irrelevant)
-                                      step_length / gradient_magnitude, // step size (units of time)
-                                      position, err, NULL, NULL, &ctx.system);
+        status = gsl_odeiv2_step_apply(ctx.step,
+                                       0,         // starting time (irrelevant)
+                                       step_length / gradient_magnitude, // step size (units of time)
+                                       position, err, NULL, NULL, &ctx.system);
 
         if (status != GSL_SUCCESS) {
           printf ("error, return value=%d\n", status);
@@ -77,8 +77,8 @@ int accumulated_flow(double *x, int Mx, double *y, int My, double *z, double *my
 
 #pragma omp parallel default(shared)
   {
-    gsl_odeiv_system system = {right_hand_side, NULL, 2, &dem};
-    gsl_odeiv_step *step = gsl_odeiv_step_alloc(gsl_odeiv_step_rkf45, 2);
+    gsl_odeiv2_system system = {right_hand_side, NULL, 2, &dem};
+    gsl_odeiv2_step *step = gsl_odeiv2_step_alloc(gsl_odeiv2_step_rkf45, 2);
     dbg_context ctx = {system, step, 2, // steps per cell
                        0, 0, 0};
 
@@ -89,7 +89,7 @@ int accumulated_flow(double *x, int Mx, double *y, int My, double *z, double *my
       }
     }
 
-    gsl_odeiv_step_free(step);
+    gsl_odeiv2_step_free(step);
 
   } // end of the parallel block
 
