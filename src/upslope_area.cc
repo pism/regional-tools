@@ -14,12 +14,12 @@ static int streamline(dbg_context ctx, int i_start, int j_start,
   DEM *dem = (DEM*)ctx.system.params;
 
   int mask_counter = 0,
-    n_max = (dem->Mx + dem->My) * ctx.steps_per_cell,
+    n_max = (dem->Mx() + dem->My()) * ctx.steps_per_cell,
     i = i_start, j = j_start,
     i_old, j_old,
     status;
 
-  double step_length = dem->spacing / ctx.steps_per_cell,
+  double step_length = dem->spacing() / ctx.steps_per_cell,
     position[2],
     err[2],
     gradient[2],
@@ -34,8 +34,8 @@ static int streamline(dbg_context ctx, int i_start, int j_start,
   if (mask_value > 0 || mask_value == ICE_FREE)
     return 0;
 
-  position[0] = dem->x[i_start] + dem->dx * 0.5;
-  position[1] = dem->y[j_start] + dem->dy * 0.5;
+  position[0] = dem->x(i_start) + dem->dx() * 0.5;
+  position[1] = dem->y(j_start) + dem->dy() * 0.5;
 
   dem->evaluate(position, &elevation, NULL);
 
@@ -111,10 +111,7 @@ int upslope_area(double *x, int Mx, double *y, int My, double *z, int *mask, boo
 
   DEM dem(x, Mx, y, My, z);
 
-  Array2D<int> my_mask(Mx, My), new_mask(Mx, My);
-  my_mask.wrap(mask);
-  if (new_mask.allocate() != 0)
-    return -1;
+  Array2D<int> my_mask(Mx, My, mask), new_mask(Mx, My);
 
 #pragma omp parallel default(shared)
   {

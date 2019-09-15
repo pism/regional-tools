@@ -3,14 +3,8 @@
 #include "dbg.hh"               // MASK_VALUES
 
 int initialize_mask(int Mx, int My, double *thickness, int* output) {
-  Array2D<double> THK(Mx, My);
-  Array2D<int> mask(Mx, My), tmp(Mx, My);
-
-  THK.wrap(thickness);
-  mask.wrap(output);
-
-  if (tmp.allocate() != 0)
-    return 1;
+  Array2D<double> THK(Mx, My, thickness);
+  Array2D<int> mask(Mx, My, output), tmp(Mx, My);
 
   memset(mask.data(), 0, Mx*My*sizeof(int));
 

@@ -5,12 +5,12 @@ static int streamline2(dbg_context ctx, int i_start, int j_start, Array2D<double
                        int n_samples) {
   DEM *dem = (DEM*)ctx.system.params;
 
-  int n_max = (dem->Mx + dem->My) * ctx.steps_per_cell,
+  int n_max = (dem->Mx() + dem->My()) * ctx.steps_per_cell,
     i = i_start, j = j_start,
     i_old, j_old,
     status;
 
-  double step_length = dem->spacing / ctx.steps_per_cell,
+  double step_length = dem->spacing() / ctx.steps_per_cell,
     position[2],
     err[2],
     gradient[2],
@@ -22,14 +22,14 @@ static int streamline2(dbg_context ctx, int i_start, int j_start, Array2D<double
 
   // try M*M points inside the cell as starting points
   int M = n_samples;
-  double step_x = dem->dx / (M + 1),
-    step_y = dem->dy / (M + 1);
+  double step_x = dem->dx() / (M + 1),
+    step_y = dem->dy() / (M + 1);
 
   for (int m = 1; m < M + 1; ++m) {
     for (int n = 1; n < M + 1; ++n) {
 
-      position[0] = dem->x[i_start] + step_x * m;
-      position[1] = dem->y[j_start] + step_y * n;
+      position[0] = dem->x(i_start) + step_x * m;
+      position[1] = dem->y(j_start) + step_y * n;
 
       for (int step_counter = 0; step_counter < n_max; ++step_counter) {
 
@@ -72,8 +72,7 @@ static int streamline2(dbg_context ctx, int i_start, int j_start, Array2D<double
 int accumulated_flow(double *x, int Mx, double *y, int My, double *z, double *my_mask, int n_samples) {
   DEM dem(x, Mx, y, My, z);
 
-  Array2D<double> mask(Mx, My);
-  mask.wrap(my_mask);
+  Array2D<double> mask(Mx, My, my_mask);
 
 #pragma omp parallel default(shared)
   {
