@@ -8,38 +8,20 @@
 template<class T>
 class Array2D {
 public:
+  Array2D(int Mx, int My, T *data)
+    : m_wrapper(true), m_data(data), m_Mx(Mx), m_My(My) {
+    // empty
+  }
+
   Array2D(int Mx, int My)
-    : m_wrapper(false), m_data(NULL), m_Mx(Mx), m_My(My)
-  { }
+    : m_wrapper(false), m_data(NULL), m_Mx(Mx), m_My(My) {
+    m_data = new T[Mx * My];
+  }
 
   ~Array2D() {
     if (not m_wrapper) {
-      free(m_data);
+      delete[] m_data;
     }
-  }
-
-  void set_size(int Mx, int My) {
-    m_Mx = Mx;
-    m_My = My;
-  }
-
-  int allocate() {
-    if (m_data != NULL)
-      free(m_data);
-
-    m_data = (T*)malloc(Mx() * My() * sizeof(T));
-    if (m_data == NULL)
-      return 1;
-
-    return 0;
-  }
-
-  void wrap(T* data) {
-    if (m_data != NULL && not m_wrapper)
-      free(m_data);
-
-    m_data = data;
-    m_wrapper = true;
   }
 
   inline T& operator()(int i, int j) {
