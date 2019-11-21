@@ -5,8 +5,9 @@ import numpy as np
 import sys
 import dbg
 
-def permute(variable, output_order = ('time', 'z', 'zb', 'y', 'x')):
-    '''
+
+def permute(variable, output_order=("time", "z", "zb", "y", "x")):
+    """
     Permute dimensions of a NetCDF variable to match the output
     storage order.
 
@@ -20,21 +21,20 @@ def permute(variable, output_order = ('time', 'z', 'zb', 'y', 'x')):
     Returns
     -------
     var_perm : array_like
-    '''
+    """
     input_dimensions = variable.dimensions
 
     # filter out irrelevant dimensions
-    dimensions = filter(lambda(x): x in input_dimensions,
-                        output_order)
+    dimensions = [x for x in output_order if x in input_dimensions]
 
     # create the mapping
-    mapping = map(lambda(x): dimensions.index(x),
-                  input_dimensions)
+    mapping = [dimensions.index(x) for x in input_dimensions]
 
     if mapping:
         return np.transpose(variable[:], mapping)
     else:
-        return variable[:]              # so that it does not break processing "mapping"
+        return variable[:]  # so that it does not break processing "mapping"
+
 
 def find_coordinate_variables(input_file):
     "Find names of coordinate variables in input_file."
@@ -50,6 +50,7 @@ def find_coordinate_variables(input_file):
 
     return x_name, y_name
 
+
 def load_data(input_file):
     """Loads data from an input file.
 
@@ -60,25 +61,26 @@ def load_data(input_file):
 
     xdim, ydim = find_coordinate_variables(nc)
 
-    dimension_order = ('time', 'z', 'zb', ydim, xdim)
+    dimension_order = ("time", "z", "zb", ydim, xdim)
 
     x = np.array(nc.variables[xdim][:], dtype=np.double)
     y = np.array(nc.variables[ydim][:], dtype=np.double)
     try:
-        z = np.array(np.squeeze(permute(nc.variables['usurf'], dimension_order)), dtype=np.double, order='C')
+        z = np.array(np.squeeze(permute(nc.variables["usurf"], dimension_order)), dtype=np.double, order="C")
     except:
-        z = np.array(np.squeeze(permute(nc.variables['usrf'], dimension_order)), dtype=np.double, order='C')
-    thk = np.array(np.squeeze(permute(nc.variables['thk'], dimension_order)), dtype=np.double, order='C')
+        z = np.array(np.squeeze(permute(nc.variables["usrf"], dimension_order)), dtype=np.double, order="C")
+    thk = np.array(np.squeeze(permute(nc.variables["thk"], dimension_order)), dtype=np.double, order="C")
 
     nc.close()
 
     return (x, y, z, thk)
 
+
 def save_mask(input_file, output_file, result, cutout_command, history):
     """ Saves the computed drainage basin mask to a file.
     """
 
-    print "Saving the mask to %s..." % output_file,
+    print("Saving the mask to %s..." % output_file, end=" ")
 
     nc_in = NC(input_file)
 
@@ -87,23 +89,23 @@ def save_mask(input_file, output_file, result, cutout_command, history):
     x_orig = nc_in.variables[xdim]
     y_orig = nc_in.variables[ydim]
 
-    nc_out = NC(output_file, 'w', format='NETCDF3_64BIT')
+    nc_out = NC(output_file, "w", format="NETCDF3_64BIT")
 
-    nc_out.createDimension('x', x_orig.size)
-    nc_out.createDimension('y', y_orig.size)
+    nc_out.createDimension("x", x_orig.size)
+    nc_out.createDimension("y", y_orig.size)
 
-    x = nc_out.createVariable("x", x_orig.dtype, ('x',))
-    y = nc_out.createVariable("y", x_orig.dtype, ('y',))
-    mask = nc_out.createVariable("ftt_mask", 'i4', ('y', 'x'))
+    x = nc_out.createVariable("x", x_orig.dtype, ("x",))
+    y = nc_out.createVariable("y", x_orig.dtype, ("y",))
+    mask = nc_out.createVariable("ftt_mask", "i4", ("y", "x"))
 
     mask.long_name = "Drainage basin area for regional modeling"
 
     # copy attributes
-    for var, old_var in zip([x,y], [x_orig, y_orig]):
+    for var, old_var in zip([x, y], [x_orig, y_orig]):
         for attr in old_var.ncattrs():
             value = old_var.getncattr(attr)
-            if isinstance(value, (str, unicode)):
-                value = str(value.encode('ASCII', 'ignore'))
+            if isinstance(value, str):
+                value = str(value.encode("ASCII", "ignore"))
             var.setncattr(attr, value)
 
     # copy coordinate data
@@ -118,7 +120,8 @@ def save_mask(input_file, output_file, result, cutout_command, history):
     nc_out.close()
     nc_in.close()
 
-    print "done."
+    print("done.")
+
 
 def initialize_mask(thk, x, y, terminus):
 
@@ -128,18 +131,16 @@ def initialize_mask(thk, x, y, terminus):
         x_min, x_max, y_min, y_max = terminus
         for j in range(y.size):
             for i in range(x.size):
-                inside = (x[i] >= x_min and
-                          x[i] <= x_max and
-                          y[j] >= y_min and
-                          y[j] <= y_max)
+                inside = x[i] >= x_min and x[i] <= x_max and y[j] >= y_min and y[j] <= y_max
 
                 if inside:
-                    mask[j,i] = 2
+                    mask[j, i] = 2
                 else:
-                    if mask[j,i] > 0:
-                        mask[j,i] = 1
+                    if mask[j, i] > 0:
+                        mask[j, i] = 1
 
     return mask
+
 
 def compute_bbox(input_file, mask, x, y, border):
     """Compute the bounding box around a drainage basin and return the NCO
@@ -156,7 +157,7 @@ def compute_bbox(input_file, mask, x, y, border):
 
     for j in range(y.size):
         for i in range(x.size):
-            if mask[j,i] == 2:
+            if mask[j, i] == 2:
                 if x[i] < x[x0]:
                     x0 = i
 
@@ -168,7 +169,6 @@ def compute_bbox(input_file, mask, x, y, border):
 
                 if y[j] > y[y1]:
                     y1 = j
-
 
     x0 = np.maximum(x0 - border, 0)
     x1 = np.minimum(x1 + border, x.size - 1)
@@ -182,6 +182,7 @@ def compute_bbox(input_file, mask, x, y, border):
 class App:
     """An application class containing methods of the drainage basin tool.
     """
+
     def __init__(self, master):
         self.input_file = None
         self.master = master
@@ -196,20 +197,19 @@ class App:
 
         self.load_data()
 
-
     def load_data(self):
-        self.input_file = tkFileDialog.askopenfilename(parent=root,
-                                                       filetypes = ["NetCDF .nc"],
-                                                       title='Choose an input file')
+        self.input_file = tkFileDialog.askopenfilename(
+            parent=root, filetypes=["NetCDF .nc"], title="Choose an input file"
+        )
 
         if len(self.input_file) == 0:
-            print "No input file selected. Exiting..."
+            print("No input file selected. Exiting...")
             sys.exit(0)
 
         self.x, self.y, self.z, self.thk = load_data(self.input_file)
 
         self.mask = initialize_mask(self.thk, self.x, self.y, None)
-        print "Mask initialization: done"
+        print("Mask initialization: done")
 
         plt.figure(1)
         self.plot_mask(0, cmaps.binary)
@@ -231,29 +231,26 @@ class App:
         self.output_file = self.get_output()
 
         if self.output_file is None:
-            print "No output file selected; cannot proceed."
+            print("No output file selected; cannot proceed.")
             return
 
-        save_mask(self.input_file, self.output_file, self.mask, self.cutout_command,
-                  self.compute_command())
+        save_mask(self.input_file, self.output_file, self.mask, self.cutout_command, self.compute_command())
 
     def plot_mask(self, threshold, colormap):
         """Plots mask > threshold using the given colormap.
         Only 2 colors in the colormap matter, though...
         """
         plt.pcolormesh(self.x, self.y, self.mask > threshold, cmap=colormap)
-        plt.contour(self.x, self.y, self.z, self.Ncontours, colors='black')
-        plt.axis('tight')
-        plt.axes().set_aspect('equal')
+        plt.contour(self.x, self.y, self.z, self.Ncontours, colors="black")
+        plt.axis("tight")
+        plt.axes().set_aspect("equal")
         plt.xticks([])
         plt.yticks([])
 
     def get_output(self):
         """Asks the user for the name of the output file.
         """
-        output = tkFileDialog.asksaveasfilename(parent=root,
-                                                filetypes = ["NetCDF .nc"],
-                                                title="Save the mask in...")
+        output = tkFileDialog.asksaveasfilename(parent=root, filetypes=["NetCDF .nc"], title="Save the mask in...")
         if len(output) > 0:
             return output
         else:
@@ -266,14 +263,14 @@ class App:
 
         # 1
         label = Label(master, text="1.")
-        label.grid(padx=2, pady=2, row=1, column=1, sticky=E+W)
+        label.grid(padx=2, pady=2, row=1, column=1, sticky=E + W)
 
         button = Button(master, text="Select terminus rectangle", command=self.get_terminus)
-        button.grid(padx=2, pady=2, row=1, column=2, columnspan=2, sticky=E+W)
+        button.grid(padx=2, pady=2, row=1, column=2, columnspan=2, sticky=E + W)
 
         # 2
         label = Label(master, text="2.")
-        label.grid(padx=2, pady=2, row=2, column=1, sticky=E+W)
+        label.grid(padx=2, pady=2, row=2, column=1, sticky=E + W)
 
         label = Label(master, text="Set border width (cells):")
         label.grid(padx=2, pady=2, row=2, column=2, sticky=W)
@@ -284,24 +281,24 @@ class App:
 
         # 3
         label = Label(master, text="3.")
-        label.grid(padx=2, pady=2, row=3, column=1, sticky=E+W)
+        label.grid(padx=2, pady=2, row=3, column=1, sticky=E + W)
 
         button = Button(master, text="Compute the drainage basin mask", command=self.compute_mask)
-        button.grid(padx=2, pady=2, row=3, column=2, columnspan=2, sticky=E+W)
+        button.grid(padx=2, pady=2, row=3, column=2, columnspan=2, sticky=E + W)
 
         # 4
         label = Label(master, text="4.")
-        label.grid(padx=2, pady=2, row=4, column=1, sticky=E+W)
+        label.grid(padx=2, pady=2, row=4, column=1, sticky=E + W)
 
         button = Button(master, text="Save the drainage basin mask", command=self.save_results)
-        button.grid(padx=2, pady=2, row=4, column=2, columnspan=2, sticky=E+W)
+        button.grid(padx=2, pady=2, row=4, column=2, columnspan=2, sticky=E + W)
 
         # 5
         label = Label(master, text="5.")
-        label.grid(padx=2, pady=2, row=5, column=1, sticky=E+W)
+        label.grid(padx=2, pady=2, row=5, column=1, sticky=E + W)
 
         button = Button(master, text="Quit", command=master.quit)
-        button.grid(padx=2, pady=5, row=5, column=2, columnspan=2, sticky=E+W)
+        button.grid(padx=2, pady=5, row=5, column=2, columnspan=2, sticky=E + W)
 
         master.update()
 
@@ -323,9 +320,9 @@ class App:
             self.plot_mask(0, cmaps.binary)
             plt.draw()
 
-        plt.setp(plt.gca(),autoscale_on=False)
+        plt.setp(plt.gca(), autoscale_on=False)
 
-        cursor = Cursor(plt.axes(), useblit=True, color='black', linewidth=2 )
+        cursor = Cursor(plt.axes(), useblit=True, color="black", linewidth=2)
 
         # remove the rectangle
         if self.fill is not None and self.mask_computed == False:
@@ -337,20 +334,20 @@ class App:
 
         x0, y0 = plt.ginput(timeout=-1)[0]
 
-        l1 = plt.plot([x0, x0], [y_min, y_max], color='black', lw=2)
-        l2 = plt.plot([x_min, x_max], [y0, y0], color='black', lw=2)
+        l1 = plt.plot([x0, x0], [y_min, y_max], color="black", lw=2)
+        l2 = plt.plot([x_min, x_max], [y0, y0], color="black", lw=2)
 
         x1, y1 = plt.ginput(timeout=-1)[0]
 
-        l3 = plt.plot([x1, x1], [y_min, y_max], color='black', lw=2)
-        l4 = plt.plot([x_min, x_max], [y1, y1], color='black', lw=2)
+        l3 = plt.plot([x1, x1], [y_min, y_max], color="black", lw=2)
+        l4 = plt.plot([x_min, x_max], [y1, y1], color="black", lw=2)
 
         dx = x1 - x0
         dy = y1 - y0
 
         xs = [x0, x1, x1, x0]
         ys = [y0, y0, y1, y1]
-        self.fill = plt.fill(xs, ys, fill=False, edgecolor='black', lw = 2, hatch='/')
+        self.fill = plt.fill(xs, ys, fill=False, edgecolor="black", lw=2, hatch="/")
 
         # remove guides
         for line in [l1, l2, l3, l4]:
@@ -375,7 +372,7 @@ class App:
         self.mask = initialize_mask(self.thk, self.x, self.y, self.terminus)
 
         dbg.upslope_area(self.x, self.y, self.z, self.mask)
-        print "Drainage basin computation: done"
+        print("Drainage basin computation: done")
         self.mask_computed = True
 
         self.compute_bbox()
@@ -391,27 +388,35 @@ class App:
         try:
             self.border = int(self.entry.get())
         except:
-            print "Invalid border width value: %s, using the default (5)." % self.entry.get()
+            print("Invalid border width value: %s, using the default (5)." % self.entry.get())
             self.border = 5
 
         self.cutout_command = compute_bbox(self.input_file, self.mask, self.x, self.y, self.border)
 
-        print "To cut out the drainage basin from the original dataset, run:"
-        print self.cutout_command
+        print("To cut out the drainage basin from the original dataset, run:")
+        print(self.cutout_command)
 
     def compute_command(self):
         x_min, x_max, y_min, y_max = self.terminus
 
-        ii = np.r_[0:self.x.size][(self.x >= x_min) & (self.x <= x_max)]
-        jj = np.r_[0:self.y.size][(self.y >= y_min) & (self.y <= y_max)]
+        ii = np.r_[0 : self.x.size][(self.x >= x_min) & (self.x <= x_max)]
+        jj = np.r_[0 : self.y.size][(self.y >= y_min) & (self.y <= y_max)]
 
         i_min, i_max = ii[0], ii[-1]
         j_min, j_max = jj[0], jj[-1]
 
         cmd = "pism_regional.py -i %s -o %s -x %d,%d -y %d,%d -b %d" % (
-            self.input_file, self.output_file, i_min, i_max, j_min, j_max, self.border)
+            self.input_file,
+            self.output_file,
+            i_min,
+            i_max,
+            j_min,
+            j_max,
+            self.border,
+        )
 
         return cmd
+
 
 def batch_process():
     """
@@ -426,22 +431,21 @@ def batch_process():
 
     parser.add_option("-x", "--x_range", dest="x_range", help="x_min,x_max (in grid indices)")
     parser.add_option("-y", "--y_range", dest="y_range", help="y_min,y_max (in grid indices)")
-    parser.add_option("-b", "--border",  dest="border",  help="y_min,y_max (in grid indices)")
+    parser.add_option("-b", "--border", dest="border", help="y_min,y_max (in grid indices)")
     parser.add_option("-i", dest="input", help="input file name")
     parser.add_option("-o", dest="output", help="output file name")
 
     (opts, args) = parser.parse_args()
 
-    if (opts.input is None or opts.output is None or
-        opts.x_range is None or opts.y_range is None):
+    if opts.input is None or opts.output is None or opts.x_range is None or opts.y_range is None:
         return
 
     sys.stderr.write("Loading data from %s..." % opts.input)
     x, y, z, thk = load_data(opts.input)
     sys.stderr.write("done.\n")
 
-    i_min, i_max = map(lambda(x): int(x), opts.x_range.split(','))
-    j_min, j_max = map(lambda(x): int(x), opts.y_range.split(','))
+    i_min, i_max = [int(x) for x in opts.x_range.split(",")]
+    j_min, j_max = [int(x) for x in opts.y_range.split(",")]
 
     sys.stderr.write("Initializing the mask...")
     mask = initialize_mask(thk, x, y, (x[i_min], x[i_max], y[j_min], y[j_max]))
@@ -455,29 +459,32 @@ def batch_process():
     cutout_command = compute_bbox(opts.input, mask, x, y, int(opts.border))
     sys.stderr.write("done.\n")
 
-    print "Command: %s\n" % cutout_command
+    print("Command: %s\n" % cutout_command)
 
-    save_mask(opts.input, opts.output, mask, cutout_command,
-              ' '.join(sys.argv))
+    save_mask(opts.input, opts.output, mask, cutout_command, " ".join(sys.argv))
 
     sys.exit(0)
 
+
 if __name__ == "__main__":
 
-    batch_process()             # calls sys.exit(0) if batch processing succeeded
+    batch_process()  # calls sys.exit(0) if batch processing succeeded
 
     import matplotlib
     import matplotlib.cm as cmaps
-    matplotlib.use('TkAgg')
+
+    matplotlib.use("TkAgg")
     import pylab as plt
 
-    from Tkinter import Tk, Frame, Label, Button, Entry, E, W
-    import tkFileDialog
+    from tkinter import Tk, Frame, Label, Button, Entry, E, W
 
+    try:
+        import tkFileDialog
+    except:
+        from tkinter import filedialog as tkFileDialog
     root = Tk()
     root.wm_title("PISM drainage basin mask creator")
 
     a = App(root)
 
     root.mainloop()
-

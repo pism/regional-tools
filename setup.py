@@ -9,21 +9,21 @@ prefix = ""
 try:
     prefix = os.environ['GSL_PREFIX']
 except:
-    print "Environment variable GSL_PREFIX not set. Trying known locations..."
+    print("Environment variable GSL_PREFIX not set. Trying known locations...")
     prefixes = ["/usr/", "/usr/local/", "/opt/local/", "/sw/"]
 
     for path in prefixes:
-        print "Checking '%s'..." % path
+        print("Checking '%s'..." % path)
         try:
             os.stat(path + "include/gsl/gsl_odeiv.h")
             prefix = path
-            print "Found GSL in '%s'" % prefix
+            print("Found GSL in '%s'" % prefix)
             break
         except:
             pass
 
 if prefix == "":
-    print "Could not find GSL. Stopping..."
+    print("Could not find GSL. Stopping...")
     import sys
     sys.exit(1)
 
