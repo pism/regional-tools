@@ -3,7 +3,7 @@ from netCDF4 import Dataset as NC
 
 import numpy as np
 import sys
-import dbg
+import pism_drainage_basin_generator as dbg
 
 
 def permute(variable, output_order=("time", "z", "zb", "y", "x")):
