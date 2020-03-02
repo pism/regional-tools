@@ -9,5 +9,5 @@
 data/*
 build/*
 examples/*.nc
-python/dbg.cpp
 doc/method.pdf
+/python/pism_dbg.cpp

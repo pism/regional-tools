@@ -5,9 +5,9 @@ import numpy
 import os
 
 # If the user set GSL_PREFIX, use it. Otherwise check some standard locations.
-prefix = ""
+gsl_prefix = ""
 try:
-    prefix = os.environ["GSL_PREFIX"]
+    gsl_prefix = os.environ['GSL_PREFIX']
 except:
     print("Environment variable GSL_PREFIX not set. Trying known locations...")
     prefixes = ["/usr/", "/usr/local/", "/opt/local/", "/sw/"]
@@ -15,56 +15,57 @@ except:
     for path in prefixes:
         print("Checking '%s'..." % path)
         try:
-            os.stat(path + "include/gsl/gsl_odeiv.h")
-            prefix = path
-            print("Found GSL in '%s'" % prefix)
+            os.stat(path + "include/gsl/gsl_odeiv2.h")
+            gsl_prefix = path
+            print("Found GSL in '%s'" % gsl_prefix)
             break
         except:
             pass
 
-if prefix == "":
+if gsl_prefix == "":
     print("Could not find GSL. Stopping...")
     import sys
 
     sys.exit(1)
 
 
-# If the user set NO_OPENMP, proceed with these options. Otherwise add options GCC uses.
-libraries = ["gsl", "gslcblas"]
-extra_compile_args = ["-O3", "-ffast-math", "-Wall"]
+# If the user set NO_OPENMP, proceed with these options. Otherwise add options clang uses.
+libraries=['gsl', 'gslcblas']
+library_dirs=[gsl_prefix + "/lib"]
+extra_compile_args=["-O3", "-ffast-math", "-Wall"]
+extra_link_args=[]
 try:
     os.environ["NO_OPENMP"]
 except:
-    libraries.append("gomp")
-    extra_compile_args.append("-fopenmp")
+    extra_compile_args.append('-fopenmp')
+    libraries.append('omp')
+    library_dirs.append("/opt/local/lib/libomp")
 
 # Define the extension
-extension = Extension(
-    "pism_drainage_basin_generator",
-    sources=[
-        "python/pism_drainage_basin_generator.pyx",
-        "src/upslope_area.cc",
-        "src/accumulated_flow.cc",
-        "src/initialize_mask.cc",
-        "src/DEM.cc",
-    ],
-    include_dirs=[numpy.get_include(), "src", prefix + "/include"],
-    library_dirs=[prefix + "/lib"],
-    libraries=libraries,
-    extra_compile_args=extra_compile_args,
-    language="c++",
-)
+extension = Extension("pism_dbg",
+                      sources=["python/pism_dbg.pyx",
+                               "src/upslope_area.cc",
+                               "src/accumulated_flow.cc",
+                               "src/initialize_mask.cc",
+                               "src/DEM.cc"
+                               ],
+                      include_dirs=[numpy.get_include(), 'src', gsl_prefix + '/include'],
+                      library_dirs=library_dirs,
+                      libraries=libraries,
+                      extra_compile_args=extra_compile_args,
+                      extra_link_args=extra_link_args,
+                      language="c++")
 
 setup(
-    name="PISM Drainage Basin Generator",  # "drainage basin generator"
-    version="0.1.0",
-    description="PISM drainage basin generator",
-    long_description="""
-    This is the  'drainage basin generator' for regional modeling using PISM.
+    name = "pism_dbg",                       # "drainage basin generator"
+    version = "0.2.0",
+    description = "PISM drainage basin generator",
+    long_description = """
+    pism_dbg is the 'drainage basin generator' for regional modeling using PISM.
     See http://www.pism-docs.org for details.""",
-    author="PISM authors",
-    author_email="help@pism-docs.org",
-    url="https://github.com/pism/regional-tools",
+    author = "PISM authors",
+    author_email = "uaf-pism@alaska.edu",
+    url = "https://github.com/pism/regional-tools",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",

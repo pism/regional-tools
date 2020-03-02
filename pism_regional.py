@@ -3,7 +3,7 @@ from netCDF4 import Dataset as NC
 
 import numpy as np
 import sys
-import pism_drainage_basin_generator as dbg
+import pism_dbg
 
 
 def permute(variable, output_order=("time", "z", "zb", "y", "x")):
@@ -80,7 +80,7 @@ def save_mask(input_file, output_file, result, cutout_command, history):
     """ Saves the computed drainage basin mask to a file.
     """
 
-    print("Saving the mask to %s..." % output_file, end=" ")
+    print("Saving the mask to %s..." % output_file, end=' ')
 
     nc_in = NC(input_file)
 
@@ -105,7 +105,7 @@ def save_mask(input_file, output_file, result, cutout_command, history):
         for attr in old_var.ncattrs():
             value = old_var.getncattr(attr)
             if isinstance(value, str):
-                value = str(value.encode("ASCII", "ignore"))
+                value = str(value.encode('ASCII', 'ignore'))
             var.setncattr(attr, value)
 
     # copy coordinate data
@@ -122,10 +122,9 @@ def save_mask(input_file, output_file, result, cutout_command, history):
 
     print("done.")
 
-
 def initialize_mask(thk, x, y, terminus):
 
-    mask = dbg.initialize_mask(thk)
+    mask = pism_dbg.initialize_mask(thk)
 
     if terminus is not None:
         x_min, x_max, y_min, y_max = terminus
@@ -198,9 +197,9 @@ class App:
         self.load_data()
 
     def load_data(self):
-        self.input_file = tkFileDialog.askopenfilename(
-            parent=root, filetypes=["NetCDF .nc"], title="Choose an input file"
-        )
+        self.input_file = tkinter.filedialog.askopenfilename(parent=root,
+                                                             filetypes = ["NetCDF .nc"],
+                                                             title='Choose an input file')
 
         if len(self.input_file) == 0:
             print("No input file selected. Exiting...")
@@ -250,7 +249,9 @@ class App:
     def get_output(self):
         """Asks the user for the name of the output file.
         """
-        output = tkFileDialog.asksaveasfilename(parent=root, filetypes=["NetCDF .nc"], title="Save the mask in...")
+        output = tkinter.filedialog.asksaveasfilename(parent=root,
+                                                      filetypes = ["NetCDF .nc"],
+                                                      title="Save the mask in...")
         if len(output) > 0:
             return output
         else:
@@ -314,7 +315,7 @@ class App:
         from matplotlib.widgets import Cursor
 
         if self.mask_computed == True:
-            self.mask = dbg.initialize_mask(self.thk)
+            self.mask = pism_dbg.initialize_mask(self.thk)
 
             plt.clf()
             self.plot_mask(0, cmaps.binary)
@@ -371,7 +372,7 @@ class App:
 
         self.mask = initialize_mask(self.thk, self.x, self.y, self.terminus)
 
-        dbg.upslope_area(self.x, self.y, self.z, self.mask)
+        pism_dbg.upslope_area(self.x, self.y, self.z, self.mask)
         print("Drainage basin computation: done")
         self.mask_computed = True
 
@@ -444,15 +445,15 @@ def batch_process():
     x, y, z, thk = load_data(opts.input)
     sys.stderr.write("done.\n")
 
-    i_min, i_max = [int(x) for x in opts.x_range.split(",")]
-    j_min, j_max = [int(x) for x in opts.y_range.split(",")]
+    i_min, i_max = [int(x) for x in opts.x_range.split(',')]
+    j_min, j_max = [int(x) for x in opts.y_range.split(',')]
 
     sys.stderr.write("Initializing the mask...")
     mask = initialize_mask(thk, x, y, (x[i_min], x[i_max], y[j_min], y[j_max]))
     sys.stderr.write("done.\n")
 
     sys.stderr.write("Computing the drainage basin mask...")
-    dbg.upslope_area(x, y, z, mask)
+    pism_dbg.upslope_area(x, y, z, mask)
     sys.stderr.write("done.\n")
 
     sys.stderr.write("Computing the cutout command...")
@@ -477,11 +478,8 @@ if __name__ == "__main__":
     import pylab as plt
 
     from tkinter import Tk, Frame, Label, Button, Entry, E, W
+    import tkinter.filedialog
 
-    try:
-        import tkFileDialog
-    except:
-        from tkinter import filedialog as tkFileDialog
     root = Tk()
     root.wm_title("PISM drainage basin mask creator")
 
