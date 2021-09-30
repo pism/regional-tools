@@ -38,8 +38,8 @@ try:
     os.environ["NO_OPENMP"]
 except:
     extra_compile_args.append('-fopenmp')
-    libraries.append('omp')
-    library_dirs.append("/opt/local/lib/libomp")
+    libraries.append('gomp')
+    # library_dirs.append("/opt/local/lib/libomp")
 
 # Define the extension
 extension = Extension("pism_dbg",
