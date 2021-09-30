@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from netCDF4 import Dataset as NC
 
 import numpy as np
@@ -104,8 +104,6 @@ def save_mask(input_file, output_file, result, cutout_command, history):
     for var, old_var in zip([x, y], [x_orig, y_orig]):
         for attr in old_var.ncattrs():
             value = old_var.getncattr(attr)
-            if isinstance(value, str):
-                value = str(value.encode('ASCII', 'ignore'))
             var.setncattr(attr, value)
 
     # copy coordinate data
